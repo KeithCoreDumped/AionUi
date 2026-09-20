@@ -25,6 +25,7 @@ import {
   recordAutoUpdateStatus,
 } from './autoUpdateDiagnostics';
 import { buildCdnFeedOptions } from './updateFeed';
+import { AIONUI_OFFICIAL_UPDATES_ENABLED } from '@/trustedBuild';
 
 const FORCE_DEV_AUTO_UPDATE_ENV = 'AIONUI_FORCE_DEV_AUTO_UPDATE';
 const DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV = 'AIONUI_DEBUG_AUTO_UPDATE_CURRENT_VERSION';
@@ -129,8 +130,12 @@ class AutoUpdaterService extends EventEmitter {
 
     // Disable auto-download for manual control
     autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.autoInstallOnAppQuit = AIONUI_OFFICIAL_UPDATES_ENABLED;
     this.configureDevAutoUpdateDebug();
+    if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+      log.info('[auto-update] Official CDN update channel disabled in trusted build');
+      return;
+    }
     const cdnFeedOptions = buildCdnFeedOptions();
 
     // Set the correct update channel based on platform and architecture before
@@ -605,6 +610,10 @@ class AutoUpdaterService extends EventEmitter {
 
   async checkForUpdates(): Promise<{ success: boolean; updateInfo?: UpdateInfo; error?: string }> {
     try {
+      if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+        log.info('[auto-update] Skipping official update check in trusted build');
+        return { success: true };
+      }
       if (!this._isInitialized) {
         throw new Error('AutoUpdaterService not initialized');
       }
@@ -789,6 +798,10 @@ class AutoUpdaterService extends EventEmitter {
   }
 
   async downloadUpdate(): Promise<{ success: boolean; error?: string }> {
+    if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+      log.info('[auto-update] Skipping official update download in trusted build');
+      return { success: false, error: 'Official auto-update is disabled in this trusted build' };
+    }
     if (this._activeDownloadPromise) {
       log.debug('[auto-update] downloadUpdate reused active download');
       return this._activeDownloadPromise;
@@ -904,6 +917,10 @@ class AutoUpdaterService extends EventEmitter {
    */
   async checkForUpdatesAndNotify(): Promise<void> {
     try {
+      if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+        log.info('[auto-update] Skipping official startup update notify in trusted build');
+        return;
+      }
       // Ensure clean state: prevent stale allowDowngrade=true from prior setAllowPrerelease(true) calls
       autoUpdater.allowDowngrade = false;
       await autoUpdater.checkForUpdatesAndNotify();

@@ -79,4 +79,52 @@ describe('release packaging configuration', () => {
       rmSync(tempDir, { force: true, recursive: true });
     }
   });
+
+  itWithBash('prepares a trusted macOS arm64-only release without web-cli artifacts', () => {
+    const tempDir = mkdtempSync(resolve(tmpdir(), 'aionui-trusted-release-assets-'));
+    const artifactsDir = resolve(tempDir, 'build-artifacts');
+    const outputDir = resolve(tempDir, 'release-assets');
+
+    try {
+      const env = { ...process.env, MOCK_VERSION: '1.0.0' };
+      const createResult = spawnSync('bash', ['scripts/create-mock-release-artifacts.sh', artifactsDir], {
+        cwd: projectRoot,
+        env,
+        encoding: 'utf8',
+      });
+      expect(createResult.status).toBe(0);
+
+      for (const entry of [
+        'windows-build-x64',
+        'windows-build-arm64',
+        'macos-build-x64',
+        'linux-build-x64',
+        'linux-build-arm64',
+      ]) {
+        rmSync(resolve(artifactsDir, entry), { force: true, recursive: true });
+      }
+      for (const entry of [
+        'web-cli-darwin-arm64',
+        'web-cli-darwin-x86_64',
+        'web-cli-linux-arm64',
+        'web-cli-linux-x86_64',
+        'web-cli-win-x86_64',
+        'install-web-script',
+      ]) {
+        rmSync(resolve(artifactsDir, entry), { force: true, recursive: true });
+      }
+
+      const prepareResult = spawnSync(
+        'bash',
+        ['scripts/prepare-release-assets.sh', artifactsDir, outputDir, 'trusted-macos-arm64'],
+        { cwd: projectRoot, env, encoding: 'utf8' }
+      );
+
+      expect(prepareResult.status).toBe(0);
+      expect(readFileSync(resolve(outputDir, 'AionUi-1.0.0-mac-arm64.dmg'))).toBeDefined();
+      expect(readFileSync(resolve(outputDir, 'AionUi-1.0.0-mac-arm64.zip'))).toBeDefined();
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
+  });
 });

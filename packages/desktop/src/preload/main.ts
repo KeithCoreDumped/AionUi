@@ -4,12 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Hook Sentry IPC so the renderer SDK uses ipcRenderer.send instead of falling
-// back to fetch('sentry-ipc://...'), which floods the DevTools Network panel.
-// Bundled into this preload via `externalizeDepsPlugin({ exclude: [...] })` so
-// Electron's sandbox-mode preload doesn't try to resolve it from node_modules.
-import '@sentry/electron/preload';
+import { AIONUI_TELEMETRY_ENABLED } from '../trustedBuild';
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
+
+// Hook Sentry IPC only when telemetry is compiled in. The trusted production
+// constant is a false literal so bundlers drop this branch (no preload Sentry).
+if (AIONUI_TELEMETRY_ENABLED) {
+  // Bundled only when the compile-time telemetry flag is true.
+  require('@sentry/electron/preload');
+}
 import { ADAPTER_BRIDGE_EVENT_KEY } from '../common/adapter/constant';
 
 /**

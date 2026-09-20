@@ -478,12 +478,12 @@ function escapeNsisDefineValue(value) {
 }
 
 function writeGeneratedSentryDsnInclude(projectRoot) {
+  if (process.env.SENTRY_DSN) {
+    throw new Error('SENTRY_DSN must not be set for this trusted downstream build');
+  }
   const generatedInclude = path.join(projectRoot, 'resources/windows/support/_sentry-dsn.generated.nsh');
   fs.mkdirSync(path.dirname(generatedInclude), { recursive: true });
-  fs.writeFileSync(
-    generatedInclude,
-    `!define AIONUI_SENTRY_DSN "${escapeNsisDefineValue(process.env.SENTRY_DSN || '')}"\n`
-  );
+  fs.writeFileSync(generatedInclude, `!define AIONUI_SENTRY_DSN "${escapeNsisDefineValue('')}"\n`);
 }
 
 function isValidPackageVersion(value) {

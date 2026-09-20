@@ -17,6 +17,7 @@ import { getIncludePrerelease, runUpdateCheck } from '@/renderer/components/sett
 import { UPDATE_AVAILABLE_EVENT } from '@/renderer/components/settings/useUpdateNotificationController';
 import { IS_DISCONTINUED_BUILD } from '@/renderer/utils/discontinuedBuild';
 import { OPEN_MIGRATION_DIALOG_EVENT } from '@/renderer/components/settings/UpdateMigrationDialog';
+import { AIONUI_GITHUB_REPO, AIONUI_OFFICIAL_UPDATES_ENABLED, AIONUI_TELEMETRY_ENABLED } from '@/trustedBuild';
 import {
   getUpdateReadyState,
   setUpdateReadyState,
@@ -34,7 +35,18 @@ type LinkItem =
   | { title: string; url: string; icon: React.ReactNode; onClick?: never }
   | { title: string; onClick: () => void; icon: React.ReactNode; url?: never };
 
-const AboutModalContent: React.FC = () => {
+type AboutModalContentProps = {
+  officialUpdatesEnabled?: boolean;
+  telemetryEnabled?: boolean;
+};
+
+const REPOSITORY_URL = `https://github.com/${AIONUI_GITHUB_REPO}`;
+const RELEASES_URL = `${REPOSITORY_URL}/releases`;
+
+const AboutModalContent: React.FC<AboutModalContentProps> = ({
+  officialUpdatesEnabled = AIONUI_OFFICIAL_UPDATES_ENABLED,
+  telemetryEnabled = AIONUI_TELEMETRY_ENABLED,
+}) => {
   const { t } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
@@ -117,14 +129,18 @@ const AboutModalContent: React.FC = () => {
     },
     {
       title: t('settings.updateLog'),
-      url: 'https://github.com/iOfficeAI/AionUi/releases',
+      url: RELEASES_URL,
       icon: <Right theme='outline' size='16' className='rtl-mirror' />,
     },
-    {
-      title: t('settings.bugReport'),
-      onClick: () => setShowFeedbackModal(true),
-      icon: <Right theme='outline' size='16' className='rtl-mirror' />,
-    },
+    ...(telemetryEnabled
+      ? [
+          {
+            title: t('settings.bugReport'),
+            onClick: () => setShowFeedbackModal(true),
+            icon: <Right theme='outline' size='16' className='rtl-mirror' />,
+          } satisfies LinkItem,
+        ]
+      : []),
     {
       title: t('settings.contactMe'),
       url: 'https://x.com/WailiVery',
@@ -161,18 +177,14 @@ const AboutModalContent: React.FC = () => {
               </span>
               <div
                 className='text-t-primary cursor-pointer hover:text-t-secondary transition-colors p-4px'
-                onClick={() =>
-                  openLink('https://github.com/iOfficeAI/AionUi').catch((error) =>
-                    console.error('Failed to open link:', error)
-                  )
-                }
+                onClick={() => openLink(REPOSITORY_URL).catch((error) => console.error('Failed to open link:', error))}
               >
                 <Github theme='outline' size='20' />
               </div>
             </div>
 
             {/* Check Update Section */}
-            {isElectron && (
+            {isElectron && officialUpdatesEnabled && (
               <div className='flex flex-col items-center gap-12px w-full max-w-300px bg-fill-2 p-16px rounded-lg'>
                 <Button
                   type='primary'
@@ -225,7 +237,9 @@ const AboutModalContent: React.FC = () => {
           </div>
         </div>
       </div>
-      <FeedbackReportModal visible={showFeedbackModal} onCancel={() => setShowFeedbackModal(false)} />
+      {telemetryEnabled ? (
+        <FeedbackReportModal visible={showFeedbackModal} onCancel={() => setShowFeedbackModal(false)} />
+      ) : null}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import type { FeedbackDiagnosticsContextInput } from '@/common/types/feedbackDiagnostics';
 import { httpRequest } from '@/common/adapter/httpBridge';
+import { AIONUI_TELEMETRY_ENABLED } from '@/trustedBuild';
 
 const SUMMARY_PREVIEW_LENGTH = 60;
 const LOG_PREFIX = '[FeedbackReport]';
@@ -238,6 +239,9 @@ function buildSummary(moduleLabel: string, description: string): string {
 }
 
 export async function submitFeedbackReport(input: SubmitFeedbackReportInput): Promise<void> {
+  if (!AIONUI_TELEMETRY_ENABLED) {
+    throw new Error('Failed to flush feedback report: Sentry is not initialized');
+  }
   const attachments = [...(input.attachments ?? [])];
   let eventId: string | undefined;
   let logAttachmentStatus: FeedbackLogAttachmentStatus = input.collectLogs ? 'empty' : 'skipped';

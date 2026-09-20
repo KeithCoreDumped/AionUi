@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   updateCheckMock: vi.fn(),
   messageInfoMock: vi.fn(),
   messageErrorMock: vi.fn(),
+  openExternalUrlMock: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -51,7 +52,7 @@ vi.mock('@/common', () => ({
 
 vi.mock('@/renderer/utils/platform', () => ({
   isElectronDesktop: () => true,
-  openExternalUrl: vi.fn(),
+  openExternalUrl: mocks.openExternalUrlMock,
 }));
 
 vi.mock('@/renderer/components/settings/SettingsModal/settingsViewContext', () => ({
@@ -74,6 +75,7 @@ describe('AboutModalContent update ready state', () => {
       success: true,
       data: { currentVersion: '2.1.13', updateAvailable: false, latest: null },
     });
+    mocks.openExternalUrlMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -84,7 +86,7 @@ describe('AboutModalContent update ready state', () => {
   });
 
   it('replaces check update with ready-to-install when an update package is ready', async () => {
-    render(<AboutModalContent />);
+    render(<AboutModalContent officialUpdatesEnabled />);
 
     expect(screen.getByRole('button', { name: 'settings.checkForUpdates' })).toBeInTheDocument();
 
@@ -113,7 +115,7 @@ describe('AboutModalContent update ready state', () => {
         })
     );
 
-    render(<AboutModalContent />);
+    render(<AboutModalContent officialUpdatesEnabled />);
 
     await act(async () => {
       window.dispatchEvent(
@@ -159,7 +161,7 @@ describe('AboutModalContent update ready state', () => {
     const availableListener = vi.fn();
     window.addEventListener('aionui-update-available', availableListener);
 
-    render(<AboutModalContent />);
+    render(<AboutModalContent officialUpdatesEnabled />);
     fireEvent.click(screen.getByRole('button', { name: 'settings.checkForUpdates' }));
 
     await waitFor(() => {
@@ -177,7 +179,7 @@ describe('AboutModalContent update ready state', () => {
     const availableListener = vi.fn();
     window.addEventListener('aionui-update-available', availableListener);
 
-    render(<AboutModalContent />);
+    render(<AboutModalContent officialUpdatesEnabled />);
     fireEvent.click(screen.getByRole('button', { name: 'settings.checkForUpdates' }));
 
     await waitFor(() => {
@@ -186,5 +188,19 @@ describe('AboutModalContent update ready state', () => {
     expect(availableListener).not.toHaveBeenCalled();
 
     window.removeEventListener('aionui-update-available', availableListener);
+  });
+
+  it('hides disabled updater and feedback controls and links releases to the trusted fork', async () => {
+    render(<AboutModalContent />);
+
+    expect(screen.queryByRole('button', { name: 'settings.checkForUpdates' })).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.includePrereleaseUpdates')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.bugReport')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('settings.updateLog'));
+
+    await waitFor(() => {
+      expect(mocks.openExternalUrlMock).toHaveBeenCalledWith('https://github.com/KeithCoreDumped/AionUi/releases');
+    });
   });
 });

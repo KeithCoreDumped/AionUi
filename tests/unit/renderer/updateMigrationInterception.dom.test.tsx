@@ -77,7 +77,7 @@ describe('About panel check-update in discontinued build', () => {
     const listener = vi.fn();
     window.addEventListener(OPEN_MIGRATION_DIALOG_EVENT, listener);
 
-    render(<AboutModalContent />);
+    render(<AboutModalContent officialUpdatesEnabled />);
     fireEvent.click(screen.getByText('settings.checkForUpdates'));
 
     expect(listener).toHaveBeenCalledTimes(1);

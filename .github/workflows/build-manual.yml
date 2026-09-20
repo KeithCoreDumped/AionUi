@@ -42,6 +42,7 @@ env:
 jobs:
   prepare-matrix:
     name: Prepare Build Matrix
+    if: github.repository == 'iOfficeAI/AionUi'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -82,6 +83,7 @@ jobs:
 
   build-pipeline:
     needs: prepare-matrix
+    if: github.repository == 'iOfficeAI/AionUi'
     uses: ./.github/workflows/_build-reusable.yml
     with:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}

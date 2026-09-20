@@ -13,6 +13,7 @@ import { getOrCreateAnalyticsId } from './process/utils/analyticsId';
 import { readAutoUpdateDiagnostics } from './process/services/autoUpdateDiagnostics';
 import { collectBackendInstallDiagnostics } from './process/startup/backendInstallDiagnostics';
 import { classifyBackendStartupFailure } from './process/startup/backendStartupFailure';
+import { AIONUI_TELEMETRY_ENABLED } from './trustedBuild';
 
 // 抑制 Chromium GPU 崩溃噪声（参见 ELECTRON-9A / ELECTRON-9D）：
 // 自愈逻辑在 gpuRecovery 中处理，事件流量已无价值。
@@ -113,22 +114,29 @@ function isBackendStartupSecondaryEvent(event: { tags?: Record<string, unknown> 
   );
 }
 
+export function filterSentryEvent<T extends SearchableEvent>(event: T): T | null {
+  const haystacks = collectEventSearchText(event);
+  if (GPU_CRASH_DROP_PATTERNS.some((re) => haystacks.some((h) => re.test(h)))) {
+    return null;
+  }
+  if (isGpuProcessCrashEvent(event, haystacks)) {
+    return null;
+  }
+  if (isBackendStartupSecondaryEvent(event, haystacks)) {
+    return null;
+  }
+  return event;
+}
+
 export function initSentry(): void {
+  if (!AIONUI_TELEMETRY_ENABLED) {
+    return;
+  }
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     environment: app.isPackaged ? 'production' : 'development',
     beforeSend(event) {
-      const haystacks = collectEventSearchText(event);
-      if (GPU_CRASH_DROP_PATTERNS.some((re) => haystacks.some((h) => re.test(h)))) {
-        return null;
-      }
-      if (isGpuProcessCrashEvent(event, haystacks)) {
-        return null;
-      }
-      if (isBackendStartupSecondaryEvent(event, haystacks)) {
-        return null;
-      }
-      return event;
+      return filterSentryEvent(event);
     },
   });
 
@@ -143,6 +151,9 @@ export function initSentry(): void {
  * a stable device identifier.
  */
 export function setSentryDeviceId(): void {
+  if (!AIONUI_TELEMETRY_ENABLED) {
+    return;
+  }
   const id = getOrCreateAnalyticsId();
   Sentry.setUser({ id });
   Sentry.setTag('device_id', id);
@@ -237,6 +248,9 @@ const BACKEND_STARTUP_FLUSH_TIMEOUT_MS = 2000;
 
 export async function captureBackendStartupFailure(error: unknown): Promise<void> {
   (globalThis as typeof globalThis & { __backendStartupFailed?: boolean }).__backendStartupFailed = true;
+  if (!AIONUI_TELEMETRY_ENABLED) {
+    return;
+  }
   const capturedError = error instanceof Error ? error : new Error(String(error));
   const details = getBackendStartupDetails(error);
   const failureInfo = classifyBackendStartupFailure(error);
@@ -471,6 +485,9 @@ class UnretryableError extends Error {}
 class RetryableError extends Error {}
 
 async function runStartupLogReport(): Promise<void> {
+  if (!AIONUI_TELEMETRY_ENABLED) {
+    throw new UnretryableError('telemetry disabled');
+  }
   const now = Date.now();
   const state = readState();
 
@@ -549,6 +566,9 @@ async function runStartupLogReport(): Promise<void> {
  * retries.
  */
 export function scheduleStartupLogReport(window: BrowserWindow): void {
+  if (!AIONUI_TELEMETRY_ENABLED) {
+    return;
+  }
   const trigger = () => {
     setTimeout(() => {
       runStartupLogReport().catch((err) => {

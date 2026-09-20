@@ -40,6 +40,11 @@ vi.mock('@/renderer/services/feedback/submitFeedbackReport', () => ({
   submitFeedbackReport: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/trustedBuild', () => ({
+  AIONUI_GITHUB_REPO: 'iOfficeAI/AionUi',
+  AIONUI_TELEMETRY_ENABLED: true,
+}));
+
 import {
   type InstallationIntegrityDiagnostics,
   InstallationIntegrityFooter,

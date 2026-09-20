@@ -1,0 +1,34 @@
+{
+  "actions/checkout": {
+    "sha": "11bd71901bbe5b1630ceea73d27597364c9af683",
+    "version": "v4.2.2"
+  },
+  "actions/setup-node": {
+    "sha": "49933ea5288caeca8642d1e84afbd3f7d6820020",
+    "version": "v4.4.0"
+  },
+  "actions/setup-python": {
+    "sha": "a26af69be951a213d495a4c3e4e4022e16d87065",
+    "version": "v5.6.0"
+  },
+  "actions/upload-artifact": {
+    "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+    "version": "v4.6.2"
+  },
+  "actions/download-artifact": {
+    "sha": "d3f86a106a0bac45b974a628896c90dbdf5c8093",
+    "version": "v4.3.0"
+  },
+  "actions/attest-build-provenance": {
+    "sha": "e8998f949152b193b063cb0ec769d69d929409be",
+    "version": "v2.4.0"
+  },
+  "oven-sh/setup-bun": {
+    "sha": "735343b667d3e6f658f44d0eca948eb6282f2b76",
+    "version": "v2.0.2"
+  },
+  "microsoft/setup-msbuild": {
+    "sha": "6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce",
+    "version": "v2.0.0"
+  }
+}

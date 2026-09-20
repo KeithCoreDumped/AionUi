@@ -7,6 +7,11 @@
 import fs from 'fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/trustedBuild', () => ({
+  AIONUI_GITHUB_REPO: 'iOfficeAI/AionUi',
+  AIONUI_OFFICIAL_UPDATES_ENABLED: true,
+}));
+
 vi.mock('@/common/platform/bridge', () => ({
   bridge: {
     buildProvider: vi.fn(() => {

@@ -15,6 +15,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 
+vi.mock('@/trustedBuild', () => ({ AIONUI_TELEMETRY_ENABLED: true }));
+
 vi.mock('electron', () => ({
   app: { getVersion: () => '0.0.0-test', getPath: () => '/tmp', isPackaged: false },
 }));

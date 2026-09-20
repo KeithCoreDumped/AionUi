@@ -9,6 +9,8 @@ import { rmSync } from 'fs';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/trustedBuild', () => ({ AIONUI_OFFICIAL_UPDATES_ENABLED: true }));
+
 const autoUpdaterMock = vi.hoisted(() => ({
   logger: null as unknown,
   autoDownload: true,

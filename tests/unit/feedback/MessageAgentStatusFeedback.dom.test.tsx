@@ -10,6 +10,11 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('@/trustedBuild', () => ({
+  AIONUI_GITHUB_REPO: 'iOfficeAI/AionUi',
+  AIONUI_TELEMETRY_ENABLED: true,
+}));
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 

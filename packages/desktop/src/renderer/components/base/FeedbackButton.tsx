@@ -5,6 +5,7 @@
  */
 
 import { useFeedback } from '@/renderer/hooks/context/FeedbackContext';
+import { AIONUI_TELEMETRY_ENABLED } from '@/trustedBuild';
 import { Comment } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback } from 'react';
@@ -19,6 +20,8 @@ type FeedbackButtonProps = {
   feedbackExtra?: Record<string, unknown>;
   /** Additional classes appended to the default pill styling. */
   className?: string;
+  /** Test seam for the upstream feedback path; trusted production defaults to false. */
+  telemetryEnabled?: boolean;
 };
 
 /**
@@ -27,7 +30,13 @@ type FeedbackButtonProps = {
  * auto-captures the current window and opens the feedback modal with the
  * relevant module preselected; the user only needs to describe the issue.
  */
-const FeedbackButton: React.FC<FeedbackButtonProps> = ({ module, feedbackTags, feedbackExtra, className }) => {
+const FeedbackButton: React.FC<FeedbackButtonProps> = ({
+  module,
+  feedbackTags,
+  feedbackExtra,
+  className,
+  telemetryEnabled = AIONUI_TELEMETRY_ENABLED,
+}) => {
   const { t } = useTranslation();
   const { openFeedback } = useFeedback();
 
@@ -40,6 +49,8 @@ const FeedbackButton: React.FC<FeedbackButtonProps> = ({ module, feedbackTags, f
     },
     [feedbackExtra, feedbackTags, module, openFeedback]
   );
+
+  if (!telemetryEnabled) return null;
 
   return (
     <button

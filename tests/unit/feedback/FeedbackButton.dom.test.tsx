@@ -17,7 +17,9 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'en' } }),
 }));
 
-const openFeedbackMock = vi.fn(() => Promise.resolve());
+const { openFeedbackMock } = vi.hoisted(() => ({
+  openFeedbackMock: vi.fn(() => Promise.resolve()),
+}));
 vi.mock('@/renderer/hooks/context/FeedbackContext', () => ({
   useFeedback: () => ({ openFeedback: openFeedbackMock }),
 }));
@@ -36,13 +38,13 @@ describe('FeedbackButton', () => {
   });
 
   it('renders the one-click feedback label', () => {
-    renderButton(<FeedbackButton module='mcp-tools' />);
+    renderButton(<FeedbackButton module='mcp-tools' telemetryEnabled />);
     expect(screen.getByText('settings.oneClickFeedback')).toBeInTheDocument();
   });
 
   it('calls openFeedback with the given module and autoScreenshot=true on click', async () => {
     const user = userEvent.setup();
-    renderButton(<FeedbackButton module='agent-detection' />);
+    renderButton(<FeedbackButton module='agent-detection' telemetryEnabled />);
 
     await user.click(screen.getByRole('button'));
 
@@ -58,7 +60,7 @@ describe('FeedbackButton', () => {
     const user = userEvent.setup();
     renderButton(
       <div onClick={parentClick}>
-        <FeedbackButton module='conversation-session' />
+        <FeedbackButton module='conversation-session' telemetryEnabled />
       </div>
     );
 
@@ -70,7 +72,7 @@ describe('FeedbackButton', () => {
 
   it('still invokes openFeedback when module is omitted (undefined flows through)', async () => {
     const user = userEvent.setup();
-    renderButton(<FeedbackButton />);
+    renderButton(<FeedbackButton telemetryEnabled />);
 
     await user.click(screen.getByRole('button'));
 
@@ -84,7 +86,7 @@ describe('FeedbackButton', () => {
     openFeedbackMock.mockRejectedValueOnce(new Error('boom'));
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const user = userEvent.setup();
-    renderButton(<FeedbackButton module='system-settings' />);
+    renderButton(<FeedbackButton module='system-settings' telemetryEnabled />);
 
     await user.click(screen.getByRole('button'));
     // Let the rejected promise settle
@@ -94,5 +96,12 @@ describe('FeedbackButton', () => {
     expect(openFeedbackMock).toHaveBeenCalledTimes(1);
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+
+  it('does not render an upload control when telemetry is disabled', () => {
+    renderButton(<FeedbackButton module='system-settings' />);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(openFeedbackMock).not.toHaveBeenCalled();
   });
 });

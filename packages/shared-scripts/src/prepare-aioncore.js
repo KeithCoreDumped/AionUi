@@ -444,6 +444,12 @@ function prepareAioncore(options) {
   const { projectRoot, platform, arch, version = 'latest' } = options;
   const runtimeKey = `${platform}-${arch}`;
   const actionsRunId = (process.env.AIONUI_BACKEND_RUN_ID || '').trim();
+  const trustedBuild = process.env.AIONUI_TRUSTED_BUILD === '1';
+  if (trustedBuild && actionsRunId) {
+    throw new Error(
+      'AIONUI_TRUSTED_BUILD=1 refuses AIONUI_BACKEND_RUN_ID (precompiled AionCore Actions artifacts are not used)'
+    );
+  }
 
   let tag = null;
   if (!actionsRunId) {
@@ -507,7 +513,7 @@ function prepareAioncore(options) {
   let tempDir = null;
 
   // 1. Download from GitHub Actions artifacts when manual build run id is provided.
-  if (actionsRunId) {
+  if (actionsRunId && !trustedBuild) {
     const result = downloadAndExtractActionsArtifact(platform, arch, actionsRunId);
     sourcePath = result.binaryPath;
     tempDir = result.tempDir;
@@ -521,7 +527,7 @@ function prepareAioncore(options) {
   }
 
   // 2. Download from GitHub releases.
-  if (!sourcePath && tag) {
+  if (!sourcePath && tag && !trustedBuild) {
     try {
       const result = downloadAndExtract(platform, arch, tag);
       sourcePath = result.binaryPath;
@@ -580,6 +586,11 @@ function prepareAioncore(options) {
     return { prepared: true, dir: targetDir, sourceType };
   }
 
+  if (trustedBuild) {
+    throw new Error(
+      `AIONUI_TRUSTED_BUILD=1 requires AIONUI_BACKEND_LOCAL_BUNDLE_DIR or AIONUI_BACKEND_LOCAL_BINARY for ${runtimeKey} (refuses GitHub AionCore downloads)`
+    );
+  }
   throw new Error(`aioncore binary not found for ${runtimeKey} (tag: ${tag})`);
 }
 

@@ -25,6 +25,7 @@ import * as path from 'path';
 import semver from 'semver';
 import { autoUpdaterService } from '../services/autoUpdaterService';
 import { consumeInstallerLastFailure } from '../services/installerLastFailure';
+import { AIONUI_GITHUB_REPO, AIONUI_OFFICIAL_UPDATES_ENABLED } from '@/trustedBuild';
 
 /** Lazily loads i18n to avoid pulling in initStorage chain at module load time */
 let _i18nCache: Promise<typeof import('../services/i18n')> | null = null;
@@ -60,13 +61,13 @@ interface AutoUpdateCheckParams {
   includePrerelease?: boolean;
 }
 
-const DEFAULT_REPO = 'iOfficeAI/AionUi';
+const DEFAULT_REPO = AIONUI_GITHUB_REPO;
 const DEFAULT_USER_AGENT = 'AionUi';
 const ALLOWED_ASSET_EXTS = new Set(['.exe', '.msi', '.dmg', '.zip', '.deb', '.rpm']);
 const CDN_HOST = 'static.aionui.com';
 const CDN_BASE_URL = `https://${CDN_HOST}/releases`;
 const ALLOWED_DOWNLOAD_HOSTS = new Set<string>([
-  CDN_HOST,
+  ...(AIONUI_OFFICIAL_UPDATES_ENABLED ? [CDN_HOST] : []),
   'github.com',
   'objects.githubusercontent.com',
   'github-releases.githubusercontent.com',
@@ -675,6 +676,12 @@ export function initUpdateBridge(): void {
   ipcBridge.update.check.provider(
     async (params): Promise<{ success: boolean; data?: UpdateCheckResult; msg?: string }> => {
       try {
+        if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+          return {
+            success: true,
+            data: { currentVersion: app.getVersion(), updateAvailable: false },
+          };
+        }
         const repo = resolveRepo(params?.repo);
         const currentVersion = app.getVersion();
 
@@ -725,6 +732,12 @@ export function initUpdateBridge(): void {
   ipcBridge.update.download.provider(
     async (params: UpdateDownloadRequest): Promise<{ success: boolean; data?: UpdateDownloadResult; msg?: string }> => {
       try {
+        if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+          return {
+            success: false,
+            msg: (await getI18n()).t('update.errors.hostNotAllowed', { host: 'static.aionui.com' }),
+          };
+        }
         if (!params?.url) {
           return { success: false, msg: (await getI18n()).t('update.errors.missingUrl') };
         }
@@ -806,6 +819,9 @@ export function initUpdateBridge(): void {
       msg?: string;
     }> => {
       try {
+        if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+          return { success: true };
+        }
         // Set prerelease preference before checking
         const includePrerelease = Boolean(params?.includePrerelease);
         autoUpdaterService.setAllowPrerelease(includePrerelease);
@@ -835,6 +851,12 @@ export function initUpdateBridge(): void {
 
   ipcBridge.autoUpdate.download.provider(async (): Promise<{ success: boolean; msg?: string }> => {
     try {
+      if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+        return {
+          success: false,
+          msg: (await getI18n()).t('update.errors.hostNotAllowed', { host: 'static.aionui.com' }),
+        };
+      }
       const result = await autoUpdaterService.downloadUpdate();
       return { success: result.success, msg: result.error };
     } catch (err: unknown) {
@@ -845,6 +867,9 @@ export function initUpdateBridge(): void {
   ipcBridge.autoUpdate.restoreDownloaded.provider(
     async (): Promise<{ success: boolean; data: AutoUpdateReadyResult; msg?: string }> => {
       try {
+        if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+          return { success: true, data: { ready: false } };
+        }
         const result = await autoUpdaterService.restoreDownloadedUpdateIfAvailable();
         return { success: result.success, data: result.data, msg: result.error };
       } catch (err: unknown) {
@@ -867,6 +892,9 @@ export function initUpdateBridge(): void {
   });
 
   ipcBridge.autoUpdate.quitAndInstall.provider(async (): Promise<void> => {
+    if (!AIONUI_OFFICIAL_UPDATES_ENABLED) {
+      return;
+    }
     await autoUpdaterService.quitAndInstall();
   });
 }

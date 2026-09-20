@@ -6,6 +6,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import UnoCSS from 'unocss/vite';
 import unoConfig from '../../uno.config.ts';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { AIONUI_TELEMETRY_ENABLED } from './src/trustedBuild';
 
 // Read the real AionUi version from the repo-root package.json.
 // `packages/desktop/package.json` is a workspace-internal placeholder pinned
@@ -66,8 +67,12 @@ const mainAliases = {
 };
 
 export default defineConfig(({ mode }) => {
+  if (process.env.SENTRY_DSN || process.env.VITE_SENTRY_DSN) {
+    throw new Error('SENTRY_DSN/VITE_SENTRY_DSN must not be set for this trusted downstream build');
+  }
   const isDevelopment = mode === 'development';
   const enableSentrySourceMaps =
+    AIONUI_TELEMETRY_ENABLED &&
     !isDevelopment &&
     !!process.env.SENTRY_AUTH_TOKEN &&
     (process.env.CI !== 'true' || process.env.SENTRY_UPLOAD_SOURCE_MAPS === 'true');
@@ -152,7 +157,7 @@ export default defineConfig(({ mode }) => {
       define: {
         'process.env.NODE_ENV': JSON.stringify(mode),
         'process.env.env': JSON.stringify(process.env.env),
-        'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN ?? ''),
+        'process.env.SENTRY_DSN': JSON.stringify(''),
         // Discontinued-build fork flag (see discontinuedBuild.ts). Only AionUi's
         // final `-final` tag build sets IS_DISCONTINUED_BUILD=true in CI.
         'process.env.IS_DISCONTINUED_BUILD': JSON.stringify(process.env.IS_DISCONTINUED_BUILD === 'true'),
@@ -165,7 +170,10 @@ export default defineConfig(({ mode }) => {
       // the output, which Electron's sandbox-mode preload cannot resolve from
       // node_modules (→ "module not found"). Bundling inlines the few hundred
       // bytes of IPC wiring we actually need.
-      plugins: [externalizeDepsPlugin({ exclude: ['@sentry/electron'] })],
+      plugins: [externalizeDepsPlugin({ exclude: AIONUI_TELEMETRY_ENABLED ? ['@sentry/electron'] : [] })],
+      define: {
+        'process.env.SENTRY_DSN': JSON.stringify(''),
+      },
       resolve: {
         alias: {
           '@': resolve('packages/desktop/src'),
@@ -315,7 +323,7 @@ export default defineConfig(({ mode }) => {
         'process.env.NODE_ENV': JSON.stringify(mode),
         'process.env.env': JSON.stringify(process.env.env),
         'process.env.AIONUI_MULTI_INSTANCE': JSON.stringify(process.env.AIONUI_MULTI_INSTANCE ?? ''),
-        'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN ?? ''),
+        'process.env.SENTRY_DSN': JSON.stringify(''),
         // Inject the real AionUi version (root package.json) so renderer code
         // can show it without importing packages/desktop/package.json, which is
         // a workspace-internal placeholder frozen at "0.0.0".

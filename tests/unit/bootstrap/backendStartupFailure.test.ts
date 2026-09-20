@@ -372,7 +372,7 @@ describe('getInstallationIntegrityModalActions', () => {
     const t = (key: string) => key;
     const onReportDiagnostics = vi.fn();
 
-    const actions = getInstallationIntegrityModalActions(t, { onReportDiagnostics });
+    const actions = getInstallationIntegrityModalActions(t, { onReportDiagnostics, telemetryEnabled: true });
 
     expect(actions.downloadText).toBe('common.backendStartup.incompleteInstallation.downloadLatest');
     expect(actions.reportText).toBe('common.backendStartup.incompleteInstallation.sendDiagnostics');
@@ -391,6 +391,7 @@ describe('getInstallationIntegrityModalActions', () => {
 
     const actions = getInstallationIntegrityModalActions(t, {
       diagnosticsKind: 'data_migration',
+      telemetryEnabled: true,
     } as any);
 
     expect(actions.reportText).toBe('common.backendStartup.dataMigration.sendDiagnostics');
@@ -405,6 +406,7 @@ describe('getInstallationIntegrityModalActions', () => {
       t as any,
       {
         diagnosticsKind: 'database_newer_than_app',
+        telemetryEnabled: true,
       } as any
     );
 
@@ -420,6 +422,7 @@ describe('getInstallationIntegrityModalActions', () => {
 
     const actions = getInstallationIntegrityModalActions(t, {
       diagnosticsKind: 'local_data_repair',
+      telemetryEnabled: true,
     } as any);
 
     expect(actions.reportText).toBe('common.backendStartup.localDataRepair.sendDiagnostics');
@@ -431,6 +434,7 @@ describe('getInstallationIntegrityModalActions', () => {
 
     const actions = getInstallationIntegrityModalActions(t, {
       diagnosticsKind: 'startup_directory',
+      telemetryEnabled: true,
     } as any);
 
     expect(actions.reportText).toBe('common.backendStartup.startupDirectory.sendDiagnostics');
@@ -444,6 +448,7 @@ describe('getInstallationIntegrityModalActions', () => {
     const actions = getInstallationIntegrityModalActions(t, {
       diagnosticsKind: 'recoverable_database_corruption',
       onRecoverCorruptedDatabase,
+      telemetryEnabled: true,
     } as any);
 
     expect(actions.reportText).toBe('common.backendStartup.recoverableDatabaseCorruption.sendDiagnostics');
@@ -462,11 +467,21 @@ describe('getInstallationIntegrityModalActions', () => {
       diagnosticsKind: 'recoverable_database_corruption',
       onRecoverCorruptedDatabase,
       onReportDiagnostics,
+      telemetryEnabled: true,
     } as any);
 
     await actions.onReportDiagnostics();
 
     expect(onReportDiagnostics).toHaveBeenCalledOnce();
     expect(onRecoverCorruptedDatabase).not.toHaveBeenCalled();
+  });
+
+  it('does not offer diagnostics upload when telemetry is disabled', () => {
+    const actions = getInstallationIntegrityModalActions((key: string) => key, {
+      diagnosticsKind: 'backend_exited',
+      telemetryEnabled: false,
+    });
+
+    expect(actions.reportText).toBeUndefined();
   });
 });

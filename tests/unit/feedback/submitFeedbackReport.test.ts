@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { submitFeedbackReport } from '@/renderer/services/feedback/submitFeedbackReport';
 
+vi.mock('@/trustedBuild', () => ({ AIONUI_TELEMETRY_ENABLED: true }));
+
 const sentryMocks = vi.hoisted(() => {
   const setTag = vi.fn();
   const setUser = vi.fn();

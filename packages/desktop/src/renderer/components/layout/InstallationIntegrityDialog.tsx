@@ -3,8 +3,9 @@ import type { TFunction } from 'i18next';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type FeedbackEventTags, submitFeedbackReport } from '@/renderer/services/feedback/submitFeedbackReport';
+import { AIONUI_GITHUB_REPO, AIONUI_TELEMETRY_ENABLED } from '@/trustedBuild';
 
-const AIONUI_DOWNLOAD_URL = 'https://www.aionui.com/';
+const AIONUI_DOWNLOAD_URL = `https://github.com/${AIONUI_GITHUB_REPO}/releases`;
 const INSTALLATION_INTEGRITY_REPORT_FLUSH_TIMEOUT_MS = 2000;
 
 type InstallationIntegrityDialogKind =
@@ -176,6 +177,7 @@ export function getInstallationIntegrityModalActions(
     onDownloadLatest?: () => void;
     onRecoverCorruptedDatabase?: () => Promise<unknown> | void;
     onReportDiagnostics?: () => Promise<unknown> | void;
+    telemetryEnabled?: boolean;
   } = {}
 ): {
   downloadText?: string;
@@ -187,13 +189,15 @@ export function getInstallationIntegrityModalActions(
 } {
   const diagnosticsKind = options.diagnosticsKind ?? 'incomplete_installation';
   const config = DIALOG_KIND_CONFIG[diagnosticsKind];
+  const telemetryEnabled = options.telemetryEnabled ?? AIONUI_TELEMETRY_ENABLED;
   return {
     downloadText: config.showDownloadLatest ? getInstallationIntegrityDownloadText(t) : undefined,
     onDownloadLatest: options.onDownloadLatest ?? openDownloadLatest,
     onRecoverCorruptedDatabase: options.onRecoverCorruptedDatabase ?? (() => Promise.resolve()),
     onReportDiagnostics: options.onReportDiagnostics ?? (() => Promise.resolve()),
     recoverText: config.showRecover ? dialogKindText(t, diagnosticsKind, 'confirmRebuild') : undefined,
-    reportText: config.showDiagnostics ? dialogKindText(t, diagnosticsKind, 'sendDiagnostics') : undefined,
+    reportText:
+      config.showDiagnostics && telemetryEnabled ? dialogKindText(t, diagnosticsKind, 'sendDiagnostics') : undefined,
   };
 }
 

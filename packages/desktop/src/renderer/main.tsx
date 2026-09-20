@@ -4,10 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Sentry must be initialized first
+import { AIONUI_TELEMETRY_ENABLED } from '@/trustedBuild';
+
+// Sentry must be initialized first when telemetry is enabled.
 // Use electron-specific renderer package only inside Electron; fall back to the
 // browser SDK when running as a web server (no window.electronAPI).
-if ((window as { electronAPI?: unknown }).electronAPI) {
+if (AIONUI_TELEMETRY_ENABLED && (window as { electronAPI?: unknown }).electronAPI) {
   // Dynamic import avoids bundling sentry-ipc:// protocol code into the web build
   import('@sentry/electron/renderer')
     .then((Sentry) =>
@@ -181,6 +183,10 @@ function isInstallationIntegrityFailure(kind: RuntimeFailureKind | undefined): b
 
 function captureRuntimeInstallationIntegrityFailure(event: IRuntimeStatusEvent): void {
   if (!isInstallationIntegrityFailure(event.failure_kind)) {
+    return;
+  }
+
+  if (!AIONUI_TELEMETRY_ENABLED) {
     return;
   }
 

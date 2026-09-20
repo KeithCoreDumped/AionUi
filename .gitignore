@@ -238,3 +238,5 @@ graphify-out/
 .analysis/
 temp/
 .playwright-mcp/
+
+.env.agent

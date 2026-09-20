@@ -41,6 +41,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import styles from './index.module.css';
+import { AIONUI_TELEMETRY_ENABLED } from '@/trustedBuild';
 
 type GuidNavigationState = {
   resetAssistant?: boolean;
@@ -738,7 +739,9 @@ const GuidPage: React.FC = () => {
           inactiveBorderColor={inactiveBorderColor}
           activeShadow={activeShadow}
         />
-        <FeedbackReportModal visible={showFeedbackModal} onCancel={() => setShowFeedbackModal(false)} />
+        {AIONUI_TELEMETRY_ENABLED ? (
+          <FeedbackReportModal visible={showFeedbackModal} onCancel={() => setShowFeedbackModal(false)} />
+        ) : null}
       </div>
     </ConfigProvider>
   );

@@ -1,0 +1,220 @@
+name: Trusted CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: trusted-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
+  AIONUI_TRUSTED_BUILD: '1'
+  AIONUI_HUB_TAG: 'dist-ebc6a2b'
+
+jobs:
+  policy:
+    name: Trusted build policy
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Reject telemetry secrets
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${SENTRY_DSN:-}" ] || [ -n "${VITE_SENTRY_DSN:-}" ]; then
+            echo '::error::SENTRY_DSN/VITE_SENTRY_DSN must not be configured for trusted CI'
+            exit 1
+          fi
+
+      - name: Read pinned tool versions
+        id: tools
+        run: |
+          NODE_VERSION=$(node -p "require('./.github/trusted/tool-versions.json').node")
+          BUN_VERSION=$(node -p "require('./.github/trusted/tool-versions.json').bun")
+          echo "node=$NODE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "bun=$BUN_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ steps.tools.outputs.node }}
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          bun-version: ${{ steps.tools.outputs.bun }}
+
+      - name: Verify trusted-build policy
+        run: node .github/trusted/verify-trusted-build.js
+
+      - name: Show AionCore lock
+        run: |
+          node -e "const lock=require('./.github/aioncore.lock'); console.log('AionCore', lock.upstreamVersion, lock.revision)"
+
+  quality:
+    name: Lint, types, tests
+    runs-on: ubuntu-22.04
+    needs: policy
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Read pinned tool versions
+        id: tools
+        run: |
+          NODE_VERSION=$(node -p "require('./.github/trusted/tool-versions.json').node")
+          BUN_VERSION=$(node -p "require('./.github/trusted/tool-versions.json').bun")
+          echo "node=$NODE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "bun=$BUN_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ steps.tools.outputs.node }}
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          bun-version: ${{ steps.tools.outputs.bun }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Postinstall
+        run: bun run postinstall
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Format check
+        run: bun run format:check
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Unit tests
+        run: bun run test
+
+  smoke-linux-x64:
+    name: AionCore source-build smoke (linux-x64)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    needs: quality
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout AionUi
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Read AionCore lock
+        id: lock
+        run: |
+          REVISION=$(node -p "require('./.github/aioncore.lock').revision")
+          REPO=$(node -p "require('./.github/aioncore.lock').repository.replace(/\\.git$/, '').replace('https://github.com/','')")
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+          echo "repository=$REPO" >> "$GITHUB_OUTPUT"
+          echo "AionCore $REPO @$REVISION"
+
+      - name: Checkout AionCore
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: ${{ steps.lock.outputs.repository }}
+          ref: ${{ steps.lock.outputs.revision }}
+          path: .aioncore-src
+          persist-credentials: false
+
+      - name: Reject AionCore telemetry endpoints
+        run: |
+          set -euo pipefail
+          if grep -R -n -E 'ingest\.sentry\.io' .aioncore-src --include='*.rs' --include='*.toml' --include='*.json' | grep -v '/target/' ; then
+            echo '::error::AionCore source contains a Sentry endpoint'
+            exit 1
+          fi
+          echo 'No Sentry endpoint patterns in AionCore source'
+
+      - name: Read pinned tool versions
+        id: tools
+        run: |
+          NODE_VERSION=$(node -p "require('./.github/trusted/tool-versions.json').node")
+          BUN_VERSION=$(node -p "require('./.github/trusted/tool-versions.json').bun")
+          echo "node=$NODE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "bun=$BUN_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ steps.tools.outputs.node }}
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          bun-version: ${{ steps.tools.outputs.bun }}
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Rust
+        run: |
+          set -euo pipefail
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Linux packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 pkg-config libsqlite3-dev fakeroot dpkg-dev rpm libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon-dev libxss1 libatspi2.0-dev libgtk-3-dev libxrandr2 libasound2-dev
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build AionCore from locked source
+        env:
+          AIONCORE_SOURCE_DIR: ${{ github.workspace }}/.aioncore-src
+          AIONUI_BACKEND_ARCH: x64
+          AIONUI_BACKEND_PLATFORM: linux
+        run: node .github/trusted/build-aioncore-from-source.js
+
+      - name: Package AionUi
+        env:
+          AIONUI_TRUSTED_BUILD: '1'
+          AIONUI_BACKEND_LOCAL_BINARY: ${{ github.workspace }}/.aioncore-build/linux-x64/aioncore
+          AIONUI_BACKEND_ARCH: x64
+          CI: 'true'
+          NODE_OPTIONS: '--max-old-space-size=8192'
+        run: node scripts/build-with-builder.js x64 --linux --x64 --config.linux.target=dir
+
+      - name: Smoke packaged AionCore
+        run: |
+          set -euo pipefail
+          BIN=$(find out -type f -path '*/bundled-aioncore/linux-x64/aioncore' | head -n 1)
+          test -n "$BIN"
+          test -x "$BIN"
+          file "$BIN"
+          echo "$BIN" | grep linux-x64
+          "$BIN" --help >/tmp/aioncore-help.txt
+          cat /tmp/aioncore-help.txt | head
+          node .github/trusted/verify-trusted-build.js

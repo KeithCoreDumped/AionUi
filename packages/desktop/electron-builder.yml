@@ -218,7 +218,7 @@ electronDownload:
 
 publish:
   provider: github
-  owner: iOfficeAI
+  owner: KeithCoreDumped
   repo: AionUi
-  publishAutoUpdate: true
+  publishAutoUpdate: false
   releaseType: release
