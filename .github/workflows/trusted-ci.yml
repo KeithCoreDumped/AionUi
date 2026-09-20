@@ -14,7 +14,6 @@ concurrency:
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
-  AIONUI_TRUSTED_BUILD: '1'
   AIONUI_HUB_TAG: 'dist-ebc6a2b'
 
 jobs:
@@ -118,6 +117,8 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     needs: quality
+    env:
+      AIONUI_TRUSTED_BUILD: '1'
     permissions:
       contents: read
     steps:
