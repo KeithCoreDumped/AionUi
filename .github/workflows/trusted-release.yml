@@ -85,9 +85,9 @@ jobs:
         id: lock
         run: |
           node -e '
-            const lock = require("./.github/aioncore.lock");
-            const tools = require("./.github/trusted/tool-versions.json");
             const fs = require("fs");
+            const lock = JSON.parse(fs.readFileSync(".github/aioncore.lock", "utf8"));
+            const tools = require("./.github/trusted/tool-versions.json");
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `revision=${lock.revision}\n`);
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `repository=${lock.repository.replace(/\.git$/, "").replace("https://github.com/","")}\n`);
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${lock.upstreamVersion}\n`);

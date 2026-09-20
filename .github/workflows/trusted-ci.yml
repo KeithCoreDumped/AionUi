@@ -63,7 +63,7 @@ jobs:
 
       - name: Show AionCore lock
         run: |
-          node -e "const lock=require('./.github/aioncore.lock'); console.log('AionCore', lock.upstreamVersion, lock.revision)"
+          node -e "const fs=require('fs'); const lock=JSON.parse(fs.readFileSync('.github/aioncore.lock','utf8')); console.log('AionCore', lock.upstreamVersion, lock.revision)"
 
   quality:
     name: Lint, types, tests
@@ -129,8 +129,8 @@ jobs:
       - name: Read AionCore lock
         id: lock
         run: |
-          REVISION=$(node -p "require('./.github/aioncore.lock').revision")
-          REPO=$(node -p "require('./.github/aioncore.lock').repository.replace(/\\.git$/, '').replace('https://github.com/','')")
+          REVISION=$(node -e "const fs=require('fs'); console.log(JSON.parse(fs.readFileSync('.github/aioncore.lock','utf8')).revision)")
+          REPO=$(node -e "const fs=require('fs'); console.log(JSON.parse(fs.readFileSync('.github/aioncore.lock','utf8')).repository.replace(/\\.git$/, '').replace('https://github.com/',''))")
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
           echo "repository=$REPO" >> "$GITHUB_OUTPUT"
           echo "AionCore $REPO @$REVISION"
